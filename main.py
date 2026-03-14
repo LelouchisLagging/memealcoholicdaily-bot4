@@ -10,7 +10,7 @@ from instagrapi import Client
 
 IG_USERNAME = os.environ.get("IG_USERNAME")
 IG_PASSWORD = os.environ.get("IG_PASSWORD")
-GIPHY_API_KEY = "dc6zaTOxFJmzC"  # Giphy public beta key
+GIPHY_API_KEY = os.environ.get("GIPHY_API_KEY")
 
 DOWNLOAD_DIR = Path("downloads")
 BRANDED_DIR = Path("branded")
