@@ -43,7 +43,8 @@ def get_giphy_videos(posted):
     term = random.choice(SEARCH_TERMS)
     try:
         url = f"https://api.giphy.com/v1/gifs/search?api_key={GIPHY_API_KEY}&q={term}&limit=25&rating=pg-13"
-        r = requests.get(url, timeout=15)
+        print(f"Giphy status: {r.status_code}")
+        print(f"Giphy response: {r.text[:200]}")
         data = r.json()["data"]
         random.shuffle(data)
         for item in data:
