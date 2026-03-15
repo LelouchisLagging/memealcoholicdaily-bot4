@@ -107,36 +107,7 @@ def get_giphy_videos(posted):
     return candidates
 
 def brand_video(input_path):
-    out_path = BRANDED_DIR / f"branded_{input_path.name}"
-    try:
-        clip = VideoFileClip(str(input_path))
-        watermark = (
-            TextClip(
-                "@memeaholicdaily",
-                fontsize=max(16, int(clip.w * 0.042)),
-                font="Liberation-Sans-Bold",
-                color="white",
-            )
-            .set_opacity(0.32)
-            .set_duration(clip.duration)
-            .margin(top=16, right=16, opacity=0)
-            .set_position(("right", "top"))
-        )
-        final = CompositeVideoClip([clip, watermark])
-        final.write_videofile(
-            str(out_path),
-            codec="libx264",
-            audio_codec="aac",
-            logger=None,
-            temp_audiofile="temp_audio.m4a",
-            remove_temp=True,
-        )
-        clip.close()
-        final.close()
-        return out_path
-    except Exception as e:
-        print(f"Branding failed: {e}")
-        return input_path
+    return input_path
 
 def post_reel(video_path, caption):
     cl = Client()
