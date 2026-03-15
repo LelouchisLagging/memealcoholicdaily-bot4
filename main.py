@@ -41,12 +41,15 @@ def save_posted(posted):
 def get_giphy_videos(posted):
     candidates = []
     term = random.choice(SEARCH_TERMS)
+    print(f"Searching Giphy for: {term}")
+    print(f"API key present: {bool(GIPHY_API_KEY)}")
     try:
         url = f"https://api.giphy.com/v1/gifs/search?api_key={GIPHY_API_KEY}&q={term}&limit=25&rating=pg-13"
-        r = requests.get(url, timeout=15)  # FIXED: was missing
+        r = requests.get(url, timeout=15)
         print(f"Giphy status: {r.status_code}")
-        print(f"Giphy response: {r.text[:200]}")
+        print(f"Giphy response: {r.text[:300]}")
         data = r.json()["data"]
+        print(f"Total gifs returned: {len(data)}")
         random.shuffle(data)
         for item in data:
             gif_id = item["id"]
@@ -54,39 +57,51 @@ def get_giphy_videos(posted):
                 continue
             mp4_url = item["images"].get("original_mp4", {}).get("mp4")
             if not mp4_url:
+                print(f"No mp4 url for {gif_id}, skipping")
                 continue
             out = DOWNLOAD_DIR / f"giphy_{gif_id}.mp4"
             dl = requests.get(mp4_url, timeout=30, stream=True)
+            print(f"Download status for {gif_id}: {dl.status_code}")
             if dl.status_code == 200:
                 with open(out, "wb") as f:
                     for chunk in dl.iter_content(8192):
                         f.write(chunk)
-            if out.exists() and out.stat().st_size > 50000:
-                try:
-                    result = subprocess.run(
-                        ["ffprobe", "-v", "quiet", "-print_format", "json", "-show_format", str(out)],
-                        capture_output=True, text=True
-                    )
-                    duration = float(json.loads(result.stdout)["format"]["duration"])
-                    if duration < 3:
+            if out.exists():
+                size = out.stat().st_size
+                print(f"File size: {size} bytes")
+                if size <= 50000:
+                    print(f"Too small, skipping")
+                    continue
+            else:
+                print(f"File not saved, skipping")
+                continue
+            try:
+                result = subprocess.run(
+                    ["ffprobe", "-v", "quiet", "-print_format", "json", "-show_format", str(out)],
+                    capture_output=True, text=True
+                )
+                duration = float(json.loads(result.stdout)["format"]["duration"])
+                print(f"Duration: {duration}s")
+                if duration < 3:
+                    print(f"Too short, skipping")
+                    out.unlink(missing_ok=True)
+                    continue
+                if duration < 10:
+                    looped = DOWNLOAD_DIR / f"looped_{gif_id}.mp4"
+                    loops = max(2, int(10 / duration) + 1)
+                    subprocess.run([
+                        "ffmpeg", "-y", "-stream_loop", str(loops),
+                        "-i", str(out), "-c", "copy", str(looped)
+                    ], capture_output=True, timeout=30)
+                    if looped.exists() and looped.stat().st_size > 50000:
                         out.unlink(missing_ok=True)
-                        continue
-                    if duration < 10:
-                        looped = DOWNLOAD_DIR / f"looped_{gif_id}.mp4"
-                        loops = max(2, int(10 / duration) + 1)
-                        subprocess.run([
-                            "ffmpeg", "-y", "-stream_loop", str(loops),
-                            "-i", str(out), "-c", "copy", str(looped)
-                        ], capture_output=True, timeout=30)
-                        if looped.exists() and looped.stat().st_size > 50000:
-                            out.unlink(missing_ok=True)
-                            out = looped
-                except Exception as e:
-                    print(f"Duration check failed: {e}")
-                candidates.append((out, gif_id))
-                print(f"Got gif: {out.name}")
-                if len(candidates) >= 5:
-                    break
+                        out = looped
+            except Exception as e:
+                print(f"Duration check failed: {e}")
+            candidates.append((out, gif_id))
+            print(f"Got gif: {out.name}")
+            if len(candidates) >= 5:
+                break
     except Exception as e:
         print(f"Giphy error: {e}")
     return candidates
