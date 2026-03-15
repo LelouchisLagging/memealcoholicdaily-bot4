@@ -43,6 +43,7 @@ def get_giphy_videos(posted):
     term = random.choice(SEARCH_TERMS)
     try:
         url = f"https://api.giphy.com/v1/gifs/search?api_key={GIPHY_API_KEY}&q={term}&limit=25&rating=pg-13"
+        r = requests.get(url, timeout=15)  # FIXED: was missing
         print(f"Giphy status: {r.status_code}")
         print(f"Giphy response: {r.text[:200]}")
         data = r.json()["data"]
@@ -51,7 +52,6 @@ def get_giphy_videos(posted):
             gif_id = item["id"]
             if gif_id in posted:
                 continue
-            # Get MP4 version
             mp4_url = item["images"].get("original_mp4", {}).get("mp4")
             if not mp4_url:
                 continue
@@ -62,7 +62,6 @@ def get_giphy_videos(posted):
                     for chunk in dl.iter_content(8192):
                         f.write(chunk)
             if out.exists() and out.stat().st_size > 50000:
-                # Check duration
                 try:
                     result = subprocess.run(
                         ["ffprobe", "-v", "quiet", "-print_format", "json", "-show_format", str(out)],
@@ -72,7 +71,6 @@ def get_giphy_videos(posted):
                     if duration < 3:
                         out.unlink(missing_ok=True)
                         continue
-                    # Loop short gifs to make them longer for Instagram
                     if duration < 10:
                         looped = DOWNLOAD_DIR / f"looped_{gif_id}.mp4"
                         loops = max(2, int(10 / duration) + 1)
